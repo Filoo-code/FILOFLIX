@@ -21,18 +21,18 @@ const CategoryCard = ({ name, icon, count, isSelected, onClick }: CategoryCardPr
   return (
     <Button
       variant={isSelected ? "default" : "outline"}
-      size="lg"
+      size="sm"
       onClick={onClick}
-      className={`h-auto p-6 flex flex-col items-center space-y-3 transition-all duration-300 hover:scale-105 ${
+      className={`h-auto p-4 flex flex-col items-center space-y-2 transition-all duration-300 hover:scale-105 ${
         isSelected 
           ? 'bg-red-600 hover:bg-red-700 text-white border-red-600' 
           : 'bg-gray-800/50 hover:bg-gray-700/70 text-white border-gray-600'
       }`}
     >
-      <div className="text-3xl">{icon}</div>
+      <div className="text-xl">{icon}</div>
       <div className="text-center">
-        <h3 className="font-semibold text-lg">{name}</h3>
-        <p className="text-sm opacity-80">{count} items</p>
+        <h3 className="font-medium text-sm">{name}</h3>
+        <p className="text-xs opacity-80">{count} items</p>
       </div>
     </Button>
   );
@@ -48,7 +48,7 @@ export default function CategoriesPage() {
 
   // Predefined categories with icons and colors
   const categories = [
-    { name: 'All', key: 'all', icon: <Star className="w-8 h-8" />, description: 'All content' },
+    { name: 'All', key: 'all', icon: <Star className="w-5 h-5" />, description: 'All content' },
     { name: 'Action', key: 'action', icon: '🔥', description: 'High-octane thrills' },
     { name: 'Comedy', key: 'comedy', icon: '😂', description: 'Laugh-out-loud moments' },
     { name: 'Drama', key: 'drama', icon: '🎭', description: 'Emotional storytelling' },
