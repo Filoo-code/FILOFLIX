@@ -37,6 +37,7 @@ export const Navbar = ({ searchQuery, onSearchChange }: NavbarProps) => {
               <Link to="/content?type=movie" className="text-white hover:text-gray-300 transition-colors">Movies</Link>
               <Link to="/content?type=series" className="text-white hover:text-gray-300 transition-colors">TV Shows</Link>
               <Link to="/content?type=trailer" className="text-white hover:text-gray-300 transition-colors">Trailers</Link>
+              <Link to="/categories" className="text-white hover:text-gray-300 transition-colors">Categories</Link>
             </div>
           </div>
 

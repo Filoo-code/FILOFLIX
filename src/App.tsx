@@ -12,6 +12,7 @@ import HomePage from "./pages/HomePage";
 import AdminLogin from "./pages/AdminLogin";
 import AdminDashboard from "./pages/AdminDashboard";
 import ContentPage from "./pages/ContentPage";
+import CategoriesPage from "./pages/CategoriesPage";
 import NotFound from "./pages/NotFound";
 
 // Context for admin authentication
@@ -91,6 +92,7 @@ const App = () => {
               <Route path="/series" element={<ContentPage />} />
               <Route path="/trailers" element={<ContentPage />} />
               <Route path="/content" element={<ContentPage />} />
+              <Route path="/categories" element={<CategoriesPage />} />
               <Route path="/admin/login" element={<AdminLogin />} />
               <Route path="/admin/dashboard" element={
                 <ProtectedAdminRoute>
