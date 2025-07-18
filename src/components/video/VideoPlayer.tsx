@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { X, Download, Play, Loader2 } from "lucide-react";
+import { X, Download } from "lucide-react";
 
 interface VideoPlayerProps {
   isOpen: boolean;
@@ -20,24 +20,12 @@ export const VideoPlayer = ({
   onClose, 
   onDownload 
 }: VideoPlayerProps) => {
-  const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
-  const [showPlayButton, setShowPlayButton] = useState(true);
 
   useEffect(() => {
     if (isOpen && videoSrc) {
-      setIsLoading(true);
       setHasError(false);
-      setShowPlayButton(true);
       console.log('VideoPlayer: Opening with video source:', videoSrc);
-      
-      // Set a timeout to automatically hide loading after 5 seconds
-      const loadingTimeout = setTimeout(() => {
-        console.log('VideoPlayer: Loading timeout reached, hiding loading state');
-        setIsLoading(false);
-      }, 5000);
-      
-      return () => clearTimeout(loadingTimeout);
     }
   }, [isOpen, videoSrc]);
 
@@ -119,24 +107,6 @@ export const VideoPlayer = ({
 
       return (
         <div className="w-full h-full relative bg-black">
-          {/* Loading overlay */}
-          {isLoading && (
-            <div className="absolute inset-0 bg-black flex items-center justify-center z-20">
-              <div className="text-center text-white">
-                <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
-                <p>Loading video...</p>
-                <Button
-                  onClick={() => setIsLoading(false)}
-                  variant="outline"
-                  size="sm"
-                  className="text-white border-white mt-4"
-                >
-                  Skip Loading
-                </Button>
-              </div>
-            </div>
-          )}
-
           {/* Error overlay */}
           {hasError && (
             <div className="absolute inset-0 bg-black flex items-center justify-center z-20">
@@ -145,7 +115,6 @@ export const VideoPlayer = ({
                 <Button 
                   onClick={() => {
                     setHasError(false);
-                    setIsLoading(true);
                     // Try to reload
                     const iframe = document.querySelector('#video-iframe') as HTMLIFrameElement;
                     if (iframe) {
@@ -163,27 +132,6 @@ export const VideoPlayer = ({
               </div>
             </div>
           )}
-
-          {/* Manual play button overlay */}
-          {showPlayButton && !isLoading && !hasError && (
-            <div className="absolute inset-0 bg-black/30 flex items-center justify-center z-10">
-              <Button
-                size="lg"
-                onClick={() => {
-                  console.log('Manual play button clicked');
-                  setShowPlayButton(false);
-                  // Try to focus and interact with the iframe
-                  const iframe = document.querySelector('#video-iframe') as HTMLIFrameElement;
-                  if (iframe) {
-                    iframe.focus();
-                  }
-                }}
-                className="bg-white/90 text-black hover:bg-white rounded-full w-20 h-20 p-0"
-              >
-                <Play className="w-8 h-8 fill-current" />
-              </Button>
-            </div>
-          )}
           
           <div 
             className="w-full h-full"
@@ -199,24 +147,6 @@ export const VideoPlayer = ({
     console.log('VideoPlayer: Processing direct URL:', videoSrc);
     return (
       <div className="w-full h-full relative bg-black">
-        {/* Loading overlay */}
-        {isLoading && (
-          <div className="absolute inset-0 bg-black flex items-center justify-center z-20">
-            <div className="text-center text-white">
-              <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
-              <p>Loading video...</p>
-              <Button
-                onClick={() => setIsLoading(false)}
-                variant="outline"
-                size="sm"
-                className="text-white border-white mt-4"
-              >
-                Skip Loading
-              </Button>
-            </div>
-          </div>
-        )}
-
         {/* Error overlay */}
         {hasError && (
           <div className="absolute inset-0 bg-black flex items-center justify-center z-20">
@@ -225,7 +155,6 @@ export const VideoPlayer = ({
               <Button 
                 onClick={() => {
                   setHasError(false);
-                  setIsLoading(true);
                 }} 
                 variant="outline" 
                 className="text-white border-white mr-2"
@@ -249,12 +178,10 @@ export const VideoPlayer = ({
           style={{ border: 'none', background: 'black' }}
           onLoad={() => {
             console.log('VideoPlayer: Direct iframe loaded successfully');
-            setIsLoading(false);
             setHasError(false);
           }}
           onError={(e) => {
             console.error('VideoPlayer: Direct iframe failed to load:', e);
-            setIsLoading(false);
             setHasError(true);
           }}
         />
