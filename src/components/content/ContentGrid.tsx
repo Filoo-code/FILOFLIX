@@ -270,12 +270,18 @@ export const ContentGrid = ({ items, title, isAdmin = false, onEdit }: ContentGr
                   alt={item.title}
                   className="w-full h-full object-cover"
                   loading="lazy"
+                  onError={(e) => {
+                    console.error('Failed to load image:', item.thumbnail);
+                    e.currentTarget.style.display = 'none';
+                    e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                  }}
                 />
-              ) : (
-                <div className="w-full h-full bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center">
-                  <Play className="w-12 h-12 text-gray-400" />
-                </div>
-              )}
+              ) : null}
+              
+              {/* Fallback when image fails to load */}
+              <div className={`w-full h-full bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center ${item.thumbnail ? 'hidden' : ''}`}>
+                <Play className="w-12 h-12 text-gray-400" />
+              </div>
               
               {/* Overlay */}
               <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
