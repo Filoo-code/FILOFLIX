@@ -26,6 +26,17 @@ export const VideoPlayer = ({
     if (isOpen && videoSrc) {
       setHasError(false);
       console.log('VideoPlayer: Opening with video source:', videoSrc);
+      
+      // Add a delay before loading to handle concurrent access issues
+      const timer = setTimeout(() => {
+        const iframe = document.querySelector('#video-iframe') as HTMLIFrameElement;
+        if (iframe && iframe.src) {
+          console.log('VideoPlayer: Refreshing iframe after delay for multi-device support');
+          iframe.src = iframe.src;
+        }
+      }, 1000);
+      
+      return () => clearTimeout(timer);
     }
   }, [isOpen, videoSrc]);
 
@@ -111,7 +122,8 @@ export const VideoPlayer = ({
           {hasError && (
             <div className="absolute inset-0 bg-black flex items-center justify-center z-20">
               <div className="text-center text-white">
-                <p className="text-xl mb-4">Video failed to load</p>
+               <p className="text-xl mb-4">Video failed to load</p>
+               <p className="text-sm text-gray-400 mb-4">This may be due to the video being played on another device</p>
                 <Button 
                   onClick={() => {
                     setHasError(false);
@@ -151,7 +163,8 @@ export const VideoPlayer = ({
         {hasError && (
           <div className="absolute inset-0 bg-black flex items-center justify-center z-20">
             <div className="text-center text-white">
-              <p className="text-xl mb-4">Video failed to load</p>
+               <p className="text-xl mb-4">Video failed to load</p>
+               <p className="text-sm text-gray-400 mb-4">This may be due to the video being played on another device</p>
               <Button 
                 onClick={() => {
                   setHasError(false);
@@ -181,7 +194,7 @@ export const VideoPlayer = ({
             setHasError(false);
           }}
           onError={(e) => {
-            console.error('VideoPlayer: Direct iframe failed to load:', e);
+            console.error('VideoPlayer: Direct iframe failed to load (possibly due to multi-device access):', e);
             setHasError(true);
           }}
         />
