@@ -5,35 +5,35 @@
 
 @layer base {
   :root {
-    --background: 0 0% 0%;
-    --foreground: 0 0% 98%;
+    --background: 240 10% 3%;
+    --foreground: 240 10% 98%;
 
-    --card: 0 0% 8%;
-    --card-foreground: 0 0% 98%;
+    --card: 240 10% 8%;
+    --card-foreground: 240 10% 98%;
 
-    --popover: 0 0% 8%;
-    --popover-foreground: 0 0% 98%;
+    --popover: 240 10% 8%;
+    --popover-foreground: 240 10% 98%;
 
-    --primary: 0 84% 60%;
-    --primary-foreground: 0 0% 98%;
+    --primary: 259 94% 65%;
+    --primary-foreground: 240 10% 98%;
 
-    --secondary: 0 0% 16%;
-    --secondary-foreground: 0 0% 98%;
+    --secondary: 240 8% 16%;
+    --secondary-foreground: 240 10% 98%;
 
-    --muted: 0 0% 16%;
-    --muted-foreground: 0 0% 65%;
+    --muted: 240 8% 16%;
+    --muted-foreground: 240 5% 65%;
 
-    --accent: 0 84% 60%;
-    --accent-foreground: 0 0% 98%;
+    --accent: 250 95% 70%;
+    --accent-foreground: 240 10% 98%;
 
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 0 0% 20%;
-    --input: 0 0% 16%;
-    --ring: 0 84% 60%;
+    --border: 240 8% 20%;
+    --input: 240 8% 16%;
+    --ring: 259 94% 65%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
   }
 
   * {
@@ -41,7 +41,7 @@
   }
 
   body {
-    @apply bg-black text-foreground;
+    @apply bg-background text-foreground;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   }
 
@@ -52,7 +52,7 @@
   }
 
   ::-webkit-scrollbar-track {
-    @apply bg-black;
+    @apply bg-background;
   }
 
   ::-webkit-scrollbar-thumb {
@@ -73,9 +73,9 @@
     display: none;
   }
 
-  /* Netflix-like gradient backgrounds */
+  /* Modern gradient backgrounds */
   .hero-gradient {
-    background: linear-gradient(135deg, #dc2626 0%, #991b1b 50%, #7f1d1d 100%);
+    background: linear-gradient(135deg, hsl(259 94% 65%) 0%, hsl(250 95% 70%) 50%, hsl(240 100% 75%) 100%);
   }
 
   /* Smooth hover effects */
@@ -85,7 +85,7 @@
 
   .card-hover:hover {
     transform: scale(1.05);
-    box-shadow: 0 25px 50px -12px rgba(220, 38, 38, 0.3);
+    box-shadow: 0 25px 50px -12px hsl(259 94% 65% / 0.3);
   }
 
   /* Text truncation utilities */
@@ -113,7 +113,7 @@
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
-  /* Netflix-style backdrop blur */
+  /* Modern backdrop blur */
   .backdrop-blur-md {
     backdrop-filter: blur(12px);
   }
