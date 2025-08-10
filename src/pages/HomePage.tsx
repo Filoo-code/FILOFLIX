@@ -6,11 +6,14 @@ import { ContentRow } from "@/components/content/ContentRow";
 import { Footer } from "@/components/layout/Footer";
 import { supabase } from "@/integrations/supabase/client";
 import { ContentItem } from "@/types/content";
+import { useOMDBSearch } from "@/hooks/useOMDBSearch";
 
 const HomePage = () => {
   const [content, setContent] = useState<ContentItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [omdbResults, setOmdbResults] = useState<ContentItem[]>([]);
+  const { searchOMDB, isLoading: omdbLoading } = useOMDBSearch();
 
   useEffect(() => {
     fetchContent();
@@ -25,11 +28,20 @@ const HomePage = () => {
 
       if (error) throw error;
 
-      setContent(data || []);
+      setContent(data?.map(item => ({ ...item, source: 'database' as const })) || []);
     } catch (error) {
       console.error('Error fetching content:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const searchOMDBContent = async (query: string) => {
+    if (query.trim()) {
+      const results = await searchOMDB(query);
+      setOmdbResults(results);
+    } else {
+      setOmdbResults([]);
     }
   };
 
@@ -54,25 +66,28 @@ const HomePage = () => {
     return filtered;
   };
 
-  const filteredContent = filterContent(content);
+  // Combine database content with OMDB results when searching
+  const allContent = searchQuery.trim() ? [...content, ...omdbResults] : content;
+  const filteredContent = filterContent(allContent);
   const movies = filteredContent.filter(item => item.type === 'movie');
   const series = filteredContent.filter(item => item.type === 'series');
   const trailers = filteredContent.filter(item => item.type === 'trailer');
 
   const handleSearchChange = (query: string) => {
     setSearchQuery(query);
+    searchOMDBContent(query);
   };
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-white text-xl">Loading...</div>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-foreground text-xl">Loading...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-background">
       <Navbar searchQuery={searchQuery} onSearchChange={handleSearchChange} />
       <HeroSection content={filteredContent} />
       <main className="py-8">
@@ -85,10 +100,18 @@ const HomePage = () => {
         {trailers.length > 0 && (
           <ContentRow title="Latest Trailers" items={trailers} />
         )}
-        {searchQuery.trim() && filteredContent.length === 0 && (
+        {searchQuery.trim() && omdbResults.length > 0 && (
+          <ContentRow title="OMDB Search Results" items={omdbResults} />
+        )}
+        {searchQuery.trim() && filteredContent.length === 0 && !omdbLoading && (
           <div className="text-center py-16">
-            <p className="text-gray-400 text-lg">No results found for "{searchQuery}"</p>
-            <p className="text-gray-500 text-sm mt-2">Try searching with different keywords</p>
+            <p className="text-muted-foreground text-lg">No results found for "{searchQuery}"</p>
+            <p className="text-muted-foreground/70 text-sm mt-2">Try searching with different keywords</p>
+          </div>
+        )}
+        {omdbLoading && (
+          <div className="text-center py-8">
+            <p className="text-muted-foreground">Searching OMDB...</p>
           </div>
         )}
       </main>

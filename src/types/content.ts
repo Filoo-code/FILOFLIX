@@ -13,6 +13,8 @@ export interface ContentItem {
   subtitle?: string | null;
   category?: string | null;
   age_rating?: string | null;
+  imdb_id?: string | null;
+  source?: 'database' | 'omdb';
 }
 
 export interface Episode {
