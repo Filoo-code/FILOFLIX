@@ -34,6 +34,7 @@ export const HeroSection = ({ content }: HeroSectionProps) => {
   };
 
   const handlePlayVideo = () => {
+    console.log('Play button clicked!');
     // For trailers, play inline instead of opening modal
     setIsPlaying(true);
     setIsMuted(false);
@@ -98,11 +99,11 @@ export const HeroSection = ({ content }: HeroSectionProps) => {
 
         {/* Center Play Button */}
         {!isPlaying && (
-          <div className="absolute inset-0 z-20 flex items-center justify-center">
+          <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none">
             <Button
               size="icon"
               onClick={handlePlayVideo}
-              className="w-20 h-20 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 hover:bg-white/30 transition-all duration-300"
+              className="w-20 h-20 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 hover:bg-white/30 transition-all duration-300 pointer-events-auto"
             >
               <Play className="w-8 h-8 text-white fill-white ml-1" />
             </Button>
