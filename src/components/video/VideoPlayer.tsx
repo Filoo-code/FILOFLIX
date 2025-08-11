@@ -26,17 +26,6 @@ export const VideoPlayer = ({
     if (isOpen && videoSrc) {
       setHasError(false);
       console.log('VideoPlayer: Opening with video source:', videoSrc);
-      
-      // Add a delay before loading to handle concurrent access issues
-      const timer = setTimeout(() => {
-        const iframe = document.querySelector('#video-iframe') as HTMLIFrameElement;
-        if (iframe && iframe.src) {
-          console.log('VideoPlayer: Refreshing iframe after delay for multi-device support');
-          iframe.src = iframe.src;
-        }
-      }, 1000);
-      
-      return () => clearTimeout(timer);
     }
   }, [isOpen, videoSrc]);
 
