@@ -28,24 +28,30 @@ export const VideoPlayer = ({
   const [isLoading, setIsLoading] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
 
-  // Preload Mega.nz domains for faster connection
+  // Aggressive preloading for mobile/TV performance
   useEffect(() => {
     const preloadDomains = () => {
       const domains = ['mega.nz', 'g.api.mega.co.nz', 'eu.api.mega.co.nz', 'us.api.mega.co.nz'];
       domains.forEach(domain => {
-        const link = document.createElement('link');
-        link.rel = 'dns-prefetch';
-        link.href = `https://${domain}`;
-        document.head.appendChild(link);
+        // DNS prefetch for faster domain resolution
+        const prefetch = document.createElement('link');
+        prefetch.rel = 'dns-prefetch';
+        prefetch.href = `https://${domain}`;
+        document.head.appendChild(prefetch);
         
-        // Also add preconnect for faster handshake
+        // Preconnect for immediate handshake
         const preconnect = document.createElement('link');
         preconnect.rel = 'preconnect';
         preconnect.href = `https://${domain}`;
         preconnect.crossOrigin = 'anonymous';
         document.head.appendChild(preconnect);
+        
+        // Resource hints for faster loading
+        const resourceHint = document.createElement('link');
+        resourceHint.rel = 'prefetch';
+        resourceHint.href = `https://${domain}`;
+        document.head.appendChild(resourceHint);
       });
-      console.log('VideoPlayer: Preloaded Mega.nz domains for faster connection');
     };
     
     preloadDomains();
@@ -114,13 +120,12 @@ export const VideoPlayer = ({
 
     document.addEventListener('iframe-error', handleIframeError);
     
-    // Set up timer to auto-hide loading after reasonable time (reduced from 8s to 3s)
+    // Optimized loading timeout for mobile/TV (1.5s for immediate feedback)
     const loadingTimer = setTimeout(() => {
       if (isLoading) {
-        console.log('VideoPlayer: Auto-hiding loading indicator after timeout');
         setIsLoading(false);
       }
-    }, 3000);
+    }, 1500);
 
     return () => {
       document.removeEventListener('iframe-error', handleIframeError);
@@ -177,21 +182,28 @@ export const VideoPlayer = ({
         const originalUrl = urlMatch[1];
         let enhancedUrl = originalUrl;
         
-        // Force immediate playback without showing poster/thumbnail
+        // Aggressive optimization for mobile/TV instant playback
         const separator = enhancedUrl.includes('?') ? '&' : '?';
         const optimizations = [
-          'autoplay=1', // Force autoplay
-          'preload=auto', // Preload everything for immediate start
-          'poster=0', // Disable poster/thumbnail display
-          'controls=1', // Ensure controls are available
-          'muted=0' // Ensure audio works
+          'autoplay=1',
+          'preload=auto',
+          'poster=0',
+          'controls=1',
+          'muted=0',
+          'playsinline=1', // Critical for mobile iOS
+          'webkit-playsinline=1', // iOS Safari compatibility
+          'x5-playsinline=1', // Android WeChat/QQ browser
+          'loop=0',
+          'start=0' // Start immediately
         ];
         
-        // Add quality setting only if specified
-        if (connectionSpeed === 'slow') {
-          optimizations.push('quality=low');
-        } else if (selectedQuality !== 'auto') {
-          optimizations.push('quality=' + selectedQuality);
+        // Adaptive quality for performance
+        if (isTVBrowser) {
+          optimizations.push('quality=high', 'bandwidth=fast');
+        } else if (connectionSpeed === 'slow') {
+          optimizations.push('quality=low', 'bandwidth=slow');
+        } else {
+          optimizations.push('quality=medium', 'bandwidth=auto');
         }
         
         enhancedUrl = `${enhancedUrl}${separator}${optimizations.join('&')}`;
@@ -207,38 +219,42 @@ export const VideoPlayer = ({
       modifiedIframe = modifiedIframe.replace(/width="\d+"/g, 'width="100%"');
       modifiedIframe = modifiedIframe.replace(/height="\d+"/g, 'height="100%"');
       
-      // Add TV browser and connection optimizations
-      const tvOptimizedStyle = isTVBrowser 
-        ? 'width: 100%; height: 100%; border: none; background: black; image-rendering: optimizeQuality; image-rendering: -webkit-optimize-contrast; will-change: transform;'
-        : 'width: 100%; height: 100%; border: none; background: black; will-change: transform;';
+      // Performance-optimized styles for mobile/TV
+      const optimizedStyle = isTVBrowser 
+        ? 'width: 100%; height: 100%; border: none; background: black; image-rendering: optimizeQuality; transform: translateZ(0); will-change: transform; backface-visibility: hidden;'
+        : 'width: 100%; height: 100%; border: none; background: black; transform: translateZ(0); will-change: transform; -webkit-transform: translateZ(0); -webkit-backface-visibility: hidden;';
       
-      // Add style for full size and remove borders
+      // Apply performance-optimized styles
       if (modifiedIframe.includes('style=')) {
         modifiedIframe = modifiedIframe.replace(
           /style="[^"]*"/g,
-          `style="${tvOptimizedStyle}"`
+          `style="${optimizedStyle}"`
         );
       } else {
         modifiedIframe = modifiedIframe.replace(
           /(<iframe[^>]*?)>/g,
-          `$1 style="${tvOptimizedStyle}">`
+          `$1 style="${optimizedStyle}">`
         );
       }
 
       // Remove frameborder
       modifiedIframe = modifiedIframe.replace(/frameborder="\d+"/g, '');
       
-      // Add comprehensive iframe attributes for optimal performance
+      // High-performance iframe attributes for mobile/TV
       const performanceAttrs = [
         'allowfullscreen',
         'loading="eager"',
         'importance="high"',
+        'fetchpriority="high"',
         'referrerpolicy="strict-origin-when-cross-origin"',
-        'allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen; cross-origin-isolated"'
+        'allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen; cross-origin-isolated; web-share"',
+        'sandbox="allow-scripts allow-same-origin allow-presentation allow-forms"'
       ];
       
       if (isTVBrowser) {
-        performanceAttrs.push('data-tv-optimized="true"');
+        performanceAttrs.push('data-tv-optimized="true"', 'data-high-performance="true"');
+      } else {
+        performanceAttrs.push('data-mobile-optimized="true"', 'playsinline');
       }
       
       const attrsString = performanceAttrs.join(' ');
