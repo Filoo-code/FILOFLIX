@@ -73,9 +73,9 @@ export const HeroSection = ({ content }: HeroSectionProps) => {
         <div className="absolute inset-0">
           {isPlaying && featuredContent?.video_url ? (
             <iframe
-              src={`${extractVideoSrc(featuredContent.video_url)}${featuredContent.video_url.includes('?') ? '&' : '?'}autoplay=1&muted=${isMuted ? 1 : 0}&controls=0&loop=1&playlist=${featuredContent.video_url.split('/').pop()}`}
+              src={`${extractVideoSrc(featuredContent.video_url)}${featuredContent.video_url.includes('?') ? '&' : '?'}autoplay=1&muted=${isMuted ? 0 : 1}&controls=0&loop=1&playlist=${featuredContent.video_url.split('/').pop()}`}
               className="w-full h-full"
-              allow="autoplay; encrypted-media"
+              allow="autoplay; encrypted-media; fullscreen"
               allowFullScreen
               style={{ border: 'none' }}
             />
@@ -88,8 +88,12 @@ export const HeroSection = ({ content }: HeroSectionProps) => {
           ) : (
             <div className="w-full h-full bg-gradient-to-r from-gray-900 to-black" />
           )}
-          <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+          {!isPlaying && (
+            <>
+              <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+            </>
+          )}
         </div>
 
         {/* Content */}
@@ -126,12 +130,7 @@ export const HeroSection = ({ content }: HeroSectionProps) => {
               <Button 
                 size="lg" 
                 className="bg-white text-black hover:bg-gray-200 font-semibold px-8"
-                onClick={(e) => {
-                  console.log('Hero play button clicked');
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handlePlayVideo();
-                }}
+                onClick={handlePlayVideo}
               >
                 <Play className="w-5 h-5 mr-2 fill-current" />
                 Play
