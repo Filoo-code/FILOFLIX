@@ -28,34 +28,31 @@ export const VideoPlayer = ({
   const [isLoading, setIsLoading] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
 
-  // Aggressive preloading for mobile/TV performance
+  // Optimized preloading with cleanup
   useEffect(() => {
+    if (!isOpen) return;
+    
     const preloadDomains = () => {
-      const domains = ['mega.nz', 'g.api.mega.co.nz', 'eu.api.mega.co.nz', 'us.api.mega.co.nz'];
+      const domains = ['mega.nz'];
+      const elements: HTMLElement[] = [];
+      
       domains.forEach(domain => {
-        // DNS prefetch for faster domain resolution
+        // DNS prefetch only
         const prefetch = document.createElement('link');
         prefetch.rel = 'dns-prefetch';
         prefetch.href = `https://${domain}`;
         document.head.appendChild(prefetch);
-        
-        // Preconnect for immediate handshake
-        const preconnect = document.createElement('link');
-        preconnect.rel = 'preconnect';
-        preconnect.href = `https://${domain}`;
-        preconnect.crossOrigin = 'anonymous';
-        document.head.appendChild(preconnect);
-        
-        // Resource hints for faster loading
-        const resourceHint = document.createElement('link');
-        resourceHint.rel = 'prefetch';
-        resourceHint.href = `https://${domain}`;
-        document.head.appendChild(resourceHint);
+        elements.push(prefetch);
       });
+      
+      return elements;
     };
     
-    preloadDomains();
-  }, []);
+    const elements = preloadDomains();
+    return () => {
+      elements.forEach(el => el.remove());
+    };
+  }, [isOpen]);
 
   // Detect TV browser and connection speed
   useEffect(() => {
@@ -120,12 +117,12 @@ export const VideoPlayer = ({
 
     document.addEventListener('iframe-error', handleIframeError);
     
-    // Optimized loading timeout for mobile/TV (1.5s for immediate feedback)
+    // Ultra-fast loading timeout (800ms for immediate feedback)
     const loadingTimer = setTimeout(() => {
       if (isLoading) {
         setIsLoading(false);
       }
-    }, 1500);
+    }, 800);
 
     return () => {
       document.removeEventListener('iframe-error', handleIframeError);
@@ -182,19 +179,18 @@ export const VideoPlayer = ({
         const originalUrl = urlMatch[1];
         let enhancedUrl = originalUrl;
         
-        // Aggressive optimization for mobile/TV instant playback
+        // Ultra-fast optimization for instant playback
         const separator = enhancedUrl.includes('?') ? '&' : '?';
         const optimizations = [
           'autoplay=1',
-          'preload=auto',
+          'muted=1', // Auto-mute for instant autoplay
+          'preload=metadata', // Load just metadata for faster start
           'poster=0',
           'controls=1',
-          'muted=0',
-          'playsinline=1', // Critical for mobile iOS
-          'webkit-playsinline=1', // iOS Safari compatibility
-          'x5-playsinline=1', // Android WeChat/QQ browser
-          'loop=0',
-          'start=0' // Start immediately
+          'playsinline=1',
+          'webkit-playsinline=1',
+          'start=0',
+          'buffer=fast' // Request faster buffering
         ];
         
         // Adaptive quality for performance
