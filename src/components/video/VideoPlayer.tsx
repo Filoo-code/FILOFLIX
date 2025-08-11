@@ -114,13 +114,13 @@ export const VideoPlayer = ({
 
     document.addEventListener('iframe-error', handleIframeError);
     
-    // Set up timer to auto-hide loading after reasonable time
+    // Set up timer to auto-hide loading after reasonable time (reduced from 8s to 3s)
     const loadingTimer = setTimeout(() => {
       if (isLoading) {
         console.log('VideoPlayer: Auto-hiding loading indicator after timeout');
         setIsLoading(false);
       }
-    }, 8000);
+    }, 3000);
 
     return () => {
       document.removeEventListener('iframe-error', handleIframeError);
@@ -171,35 +171,30 @@ export const VideoPlayer = ({
       console.log('VideoPlayer: Processing iframe embed code');
       let modifiedIframe = videoSrc;
       
-      // Extract the Mega.nz URL and enhance it for better performance
+      // Extract the Mega.nz URL and apply minimal optimizations for faster loading
       const urlMatch = modifiedIframe.match(/src="([^"]*mega\.nz[^"]*)"/);
       if (urlMatch) {
         const originalUrl = urlMatch[1];
         let enhancedUrl = originalUrl;
         
-        // Add performance and connection optimizations for Mega.nz
+        // Only add essential optimizations to avoid delays
         const separator = enhancedUrl.includes('?') ? '&' : '?';
         const optimizations = [
-          'preload=metadata',
-          'autoplay=0', // Prevent autoplay for better loading
-          'quality=' + (selectedQuality === 'auto' ? 'medium' : selectedQuality),
-          'buffer=aggressive', // More aggressive buffering
-          'retry=3', // Built-in retry mechanism
-          'connection=keep-alive' // Maintain connection
+          'preload=metadata', // Essential for faster loading
+          'autoplay=1' // Start playing immediately
         ];
         
-        if (isTVBrowser) {
-          optimizations.push('tv=1', 'render=optimized');
-        }
-        
+        // Add connection-specific optimizations only if needed
         if (connectionSpeed === 'slow') {
-          optimizations.push('lowbandwidth=1', 'compression=high');
+          optimizations.push('quality=low');
+        } else if (selectedQuality !== 'auto') {
+          optimizations.push('quality=' + selectedQuality);
         }
         
         enhancedUrl = `${enhancedUrl}${separator}${optimizations.join('&')}`;
         modifiedIframe = modifiedIframe.replace(originalUrl, enhancedUrl);
         
-        console.log('VideoPlayer: Enhanced Mega.nz URL for better performance:', enhancedUrl);
+        console.log('VideoPlayer: Optimized Mega.nz URL for faster loading:', enhancedUrl);
       }
       
       // Remove restrictive sandbox attributes that might block video playback
@@ -312,7 +307,7 @@ export const VideoPlayer = ({
           <div 
             className="w-full h-full"
             dangerouslySetInnerHTML={{ 
-              __html: modifiedIframe.replace('<iframe', `<iframe id="video-iframe" onload="document.querySelector('.loading-indicator')?.remove(); console.log('Mega.nz iframe loaded successfully');" onerror="console.error('Mega.nz iframe failed to load'); document.dispatchEvent(new CustomEvent('iframe-error'));"`)
+              __html: modifiedIframe.replace('<iframe', `<iframe id="video-iframe" onload="console.log('Mega.nz iframe loaded successfully'); document.dispatchEvent(new CustomEvent('iframe-loaded'));" onerror="console.error('Mega.nz iframe failed to load'); document.dispatchEvent(new CustomEvent('iframe-error'));"`)
             }}
           />
         </div>
