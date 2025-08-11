@@ -82,7 +82,13 @@ export const VideoPlayer = ({
   useEffect(() => {
     if (isOpen && videoSrc) {
       setHasError(false);
+      setRetryCount(0);
       console.log('VideoPlayer: Opening with video source:', videoSrc);
+      
+      // Set loading state when video starts loading
+      if (videoSrc.includes('<iframe')) {
+        setIsLoading(true);
+      }
       
       // Auto-adjust quality for TV browsers and slow connections
       if (isTVBrowser || connectionSpeed === 'slow') {
@@ -163,7 +169,6 @@ export const VideoPlayer = ({
     // If videoSrc contains iframe HTML, render it directly
     if (videoSrc.includes('<iframe')) {
       console.log('VideoPlayer: Processing iframe embed code');
-      setIsLoading(true);
       let modifiedIframe = videoSrc;
       
       // Extract the Mega.nz URL and enhance it for better performance
