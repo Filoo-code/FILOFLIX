@@ -74,7 +74,7 @@ export const HeroSection = ({ content }: HeroSectionProps) => {
         <div className="absolute inset-0">
           {isPlaying && featuredContent?.video_url ? (
             <iframe
-              src={`${extractVideoSrc(featuredContent.video_url)}${featuredContent.video_url.includes('?') ? '&' : '?'}autoplay=1&muted=${isMuted ? 1 : 0}&controls=0&loop=1&playlist=${featuredContent.video_url.split('/').pop()}`}
+              src={extractVideoSrc(featuredContent.video_url)}
               className="w-full h-full"
               allow="autoplay; encrypted-media; fullscreen"
               allowFullScreen
