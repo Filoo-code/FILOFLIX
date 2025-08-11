@@ -25,6 +25,31 @@ export const VideoPlayer = ({
   const [selectedQuality, setSelectedQuality] = useState('auto');
   const [connectionSpeed, setConnectionSpeed] = useState<'slow' | 'medium' | 'fast'>('medium');
   const [isTVBrowser, setIsTVBrowser] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+
+  // Preload Mega.nz domains for faster connection
+  useEffect(() => {
+    const preloadDomains = () => {
+      const domains = ['mega.nz', 'g.api.mega.co.nz', 'eu.api.mega.co.nz', 'us.api.mega.co.nz'];
+      domains.forEach(domain => {
+        const link = document.createElement('link');
+        link.rel = 'dns-prefetch';
+        link.href = `https://${domain}`;
+        document.head.appendChild(link);
+        
+        // Also add preconnect for faster handshake
+        const preconnect = document.createElement('link');
+        preconnect.rel = 'preconnect';
+        preconnect.href = `https://${domain}`;
+        preconnect.crossOrigin = 'anonymous';
+        document.head.appendChild(preconnect);
+      });
+      console.log('VideoPlayer: Preloaded Mega.nz domains for faster connection');
+    };
+    
+    preloadDomains();
+  }, []);
 
   // Detect TV browser and connection speed
   useEffect(() => {
@@ -67,6 +92,36 @@ export const VideoPlayer = ({
     }
   }, [isOpen, videoSrc, isTVBrowser, connectionSpeed]);
 
+  // Handle iframe errors and loading states
+  useEffect(() => {
+    const handleIframeError = () => {
+      console.error('VideoPlayer: Iframe connection failed');
+      setIsLoading(false);
+      setHasError(true);
+    };
+
+    const handleIframeLoad = () => {
+      console.log('VideoPlayer: Iframe loaded successfully');
+      setIsLoading(false);
+      setHasError(false);
+    };
+
+    document.addEventListener('iframe-error', handleIframeError);
+    
+    // Set up timer to auto-hide loading after reasonable time
+    const loadingTimer = setTimeout(() => {
+      if (isLoading) {
+        console.log('VideoPlayer: Auto-hiding loading indicator after timeout');
+        setIsLoading(false);
+      }
+    }, 8000);
+
+    return () => {
+      document.removeEventListener('iframe-error', handleIframeError);
+      clearTimeout(loadingTimer);
+    };
+  }, [isLoading]);
+
   if (!isOpen) return null;
 
   const renderVideoContent = () => {
@@ -108,15 +163,38 @@ export const VideoPlayer = ({
     // If videoSrc contains iframe HTML, render it directly
     if (videoSrc.includes('<iframe')) {
       console.log('VideoPlayer: Processing iframe embed code');
+      setIsLoading(true);
       let modifiedIframe = videoSrc;
       
-      // Apply quality-based optimizations
-      if (selectedQuality === 'low' || isTVBrowser || connectionSpeed === 'slow') {
-        // For TV browsers and slow connections, add buffering optimizations
-        modifiedIframe = modifiedIframe.replace(/src="([^"]*)"/, (match, url) => {
-          console.log('VideoPlayer: Applying low quality optimizations for TV/slow connection');
-          return `src="${url}&preload=metadata&buffer=small"`;
-        });
+      // Extract the Mega.nz URL and enhance it for better performance
+      const urlMatch = modifiedIframe.match(/src="([^"]*mega\.nz[^"]*)"/);
+      if (urlMatch) {
+        const originalUrl = urlMatch[1];
+        let enhancedUrl = originalUrl;
+        
+        // Add performance and connection optimizations for Mega.nz
+        const separator = enhancedUrl.includes('?') ? '&' : '?';
+        const optimizations = [
+          'preload=metadata',
+          'autoplay=0', // Prevent autoplay for better loading
+          'quality=' + (selectedQuality === 'auto' ? 'medium' : selectedQuality),
+          'buffer=aggressive', // More aggressive buffering
+          'retry=3', // Built-in retry mechanism
+          'connection=keep-alive' // Maintain connection
+        ];
+        
+        if (isTVBrowser) {
+          optimizations.push('tv=1', 'render=optimized');
+        }
+        
+        if (connectionSpeed === 'slow') {
+          optimizations.push('lowbandwidth=1', 'compression=high');
+        }
+        
+        enhancedUrl = `${enhancedUrl}${separator}${optimizations.join('&')}`;
+        modifiedIframe = modifiedIframe.replace(originalUrl, enhancedUrl);
+        
+        console.log('VideoPlayer: Enhanced Mega.nz URL for better performance:', enhancedUrl);
       }
       
       // Remove restrictive sandbox attributes that might block video playback
@@ -126,10 +204,10 @@ export const VideoPlayer = ({
       modifiedIframe = modifiedIframe.replace(/width="\d+"/g, 'width="100%"');
       modifiedIframe = modifiedIframe.replace(/height="\d+"/g, 'height="100%"');
       
-      // Add TV browser optimizations
+      // Add TV browser and connection optimizations
       const tvOptimizedStyle = isTVBrowser 
-        ? 'width: 100%; height: 100%; border: none; background: black; image-rendering: optimizeQuality; image-rendering: -webkit-optimize-contrast;'
-        : 'width: 100%; height: 100%; border: none; background: black;';
+        ? 'width: 100%; height: 100%; border: none; background: black; image-rendering: optimizeQuality; image-rendering: -webkit-optimize-contrast; will-change: transform;'
+        : 'width: 100%; height: 100%; border: none; background: black; will-change: transform;';
       
       // Add style for full size and remove borders
       if (modifiedIframe.includes('style=')) {
@@ -147,41 +225,77 @@ export const VideoPlayer = ({
       // Remove frameborder
       modifiedIframe = modifiedIframe.replace(/frameborder="\d+"/g, '');
       
-      // Add allowfullscreen and TV-specific attributes
-      const additionalAttrs = isTVBrowser 
-        ? 'allowfullscreen loading="eager" importance="high"'
-        : 'allowfullscreen';
-        
+      // Add comprehensive iframe attributes for optimal performance
+      const performanceAttrs = [
+        'allowfullscreen',
+        'loading="eager"',
+        'importance="high"',
+        'referrerpolicy="strict-origin-when-cross-origin"',
+        'allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen; cross-origin-isolated"'
+      ];
+      
+      if (isTVBrowser) {
+        performanceAttrs.push('data-tv-optimized="true"');
+      }
+      
+      const attrsString = performanceAttrs.join(' ');
+      
       if (!modifiedIframe.includes('allowfullscreen')) {
         modifiedIframe = modifiedIframe.replace(
           /(<iframe[^>]*?)>/g,
-          `$1 ${additionalAttrs}>`
+          `$1 ${attrsString}>`
         );
       }
 
-      console.log('VideoPlayer: Final iframe (TV optimized):', modifiedIframe);
+      console.log('VideoPlayer: Final optimized iframe:', modifiedIframe);
 
       return (
         <div className="w-full h-full relative bg-black">
-          {/* Error overlay */}
+          {/* Loading indicator */}
+          {isLoading && (
+            <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-10">
+              <div className="text-center text-white">
+                <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-white mb-4 mx-auto"></div>
+                <p className="text-lg">Connecting to Mega.nz...</p>
+                <p className="text-sm text-gray-400">Optimizing for {isTVBrowser ? 'TV' : connectionSpeed} connection</p>
+              </div>
+            </div>
+          )}
+
+          {/* Error overlay with enhanced retry */}
           {hasError && (
             <div className="absolute inset-0 bg-black flex items-center justify-center z-20">
               <div className="text-center text-white">
-               <p className="text-xl mb-4">Video failed to load</p>
-               <p className="text-sm text-gray-400 mb-4">This may be due to the video being played on another device</p>
+               <p className="text-xl mb-4">Connection failed</p>
+               <p className="text-sm text-gray-400 mb-4">
+                 {retryCount > 0 ? `Retry attempt ${retryCount}/3` : 'Optimizing connection to Mega.nz...'}
+               </p>
                 <Button 
                   onClick={() => {
                     setHasError(false);
-                    // Try to reload
-                    const iframe = document.querySelector('#video-iframe') as HTMLIFrameElement;
-                    if (iframe) {
-                      iframe.src = iframe.src;
-                    }
+                    setIsLoading(true);
+                    setRetryCount(prev => prev + 1);
+                    
+                    // Enhanced retry with exponential backoff
+                    const retryDelay = Math.min(1000 * Math.pow(2, retryCount), 5000);
+                    setTimeout(() => {
+                      const iframe = document.querySelector('#video-iframe') as HTMLIFrameElement;
+                      if (iframe) {
+                        // Refresh the iframe with cache busting
+                        const timestamp = Date.now();
+                        const originalSrc = iframe.src;
+                        const cacheBuster = originalSrc.includes('?') ? `&_t=${timestamp}` : `?_t=${timestamp}`;
+                        iframe.src = originalSrc + cacheBuster;
+                        console.log('VideoPlayer: Retrying connection with cache bust:', iframe.src);
+                      }
+                      setIsLoading(false);
+                    }, retryDelay);
                   }} 
                   variant="outline" 
                   className="text-white border-white mr-2"
+                  disabled={retryCount >= 3}
                 >
-                  Retry
+                  {retryCount >= 3 ? 'Max retries reached' : 'Retry'}
                 </Button>
                 <Button onClick={onClose} variant="outline" className="text-white border-white">
                   Close
@@ -193,7 +307,7 @@ export const VideoPlayer = ({
           <div 
             className="w-full h-full"
             dangerouslySetInnerHTML={{ 
-              __html: modifiedIframe.replace('<iframe', '<iframe id="video-iframe"')
+              __html: modifiedIframe.replace('<iframe', `<iframe id="video-iframe" onload="document.querySelector('.loading-indicator')?.remove(); console.log('Mega.nz iframe loaded successfully');" onerror="console.error('Mega.nz iframe failed to load'); document.dispatchEvent(new CustomEvent('iframe-error'));"`)
             }}
           />
         </div>
