@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { X, Download } from "lucide-react";
+import { X, Download, Settings, Wifi, WifiOff } from "lucide-react";
 
 interface VideoPlayerProps {
   isOpen: boolean;
@@ -21,13 +21,51 @@ export const VideoPlayer = ({
   onDownload 
 }: VideoPlayerProps) => {
   const [hasError, setHasError] = useState(false);
+  const [showQualityMenu, setShowQualityMenu] = useState(false);
+  const [selectedQuality, setSelectedQuality] = useState('auto');
+  const [connectionSpeed, setConnectionSpeed] = useState<'slow' | 'medium' | 'fast'>('medium');
+  const [isTVBrowser, setIsTVBrowser] = useState(false);
+
+  // Detect TV browser and connection speed
+  useEffect(() => {
+    const userAgent = navigator.userAgent.toLowerCase();
+    const isTV = userAgent.includes('smart-tv') || 
+                 userAgent.includes('tizen') || 
+                 userAgent.includes('webos') || 
+                 userAgent.includes('roku') || 
+                 userAgent.includes('hbbtv') ||
+                 window.innerWidth > 1920 || // Large screen assumption
+                 /tv|television/i.test(userAgent);
+    
+    setIsTVBrowser(isTV);
+    
+    // Test connection speed
+    const testConnectionSpeed = () => {
+      const connection = (navigator as any).connection || (navigator as any).mozConnection || (navigator as any).webkitConnection;
+      if (connection) {
+        const speed = connection.downlink || connection.bandwidth;
+        if (speed < 2) setConnectionSpeed('slow');
+        else if (speed < 10) setConnectionSpeed('medium');
+        else setConnectionSpeed('fast');
+      }
+    };
+
+    testConnectionSpeed();
+    console.log('VideoPlayer: TV Browser detected:', isTV, 'Connection speed:', connectionSpeed);
+  }, []);
 
   useEffect(() => {
     if (isOpen && videoSrc) {
       setHasError(false);
       console.log('VideoPlayer: Opening with video source:', videoSrc);
+      
+      // Auto-adjust quality for TV browsers and slow connections
+      if (isTVBrowser || connectionSpeed === 'slow') {
+        setSelectedQuality('low');
+        console.log('VideoPlayer: Auto-setting low quality for TV/slow connection');
+      }
     }
-  }, [isOpen, videoSrc]);
+  }, [isOpen, videoSrc, isTVBrowser, connectionSpeed]);
 
   if (!isOpen) return null;
 
@@ -72,6 +110,15 @@ export const VideoPlayer = ({
       console.log('VideoPlayer: Processing iframe embed code');
       let modifiedIframe = videoSrc;
       
+      // Apply quality-based optimizations
+      if (selectedQuality === 'low' || isTVBrowser || connectionSpeed === 'slow') {
+        // For TV browsers and slow connections, add buffering optimizations
+        modifiedIframe = modifiedIframe.replace(/src="([^"]*)"/, (match, url) => {
+          console.log('VideoPlayer: Applying low quality optimizations for TV/slow connection');
+          return `src="${url}&preload=metadata&buffer=small"`;
+        });
+      }
+      
       // Remove restrictive sandbox attributes that might block video playback
       modifiedIframe = modifiedIframe.replace(/sandbox="[^"]*"/g, '');
       
@@ -79,31 +126,40 @@ export const VideoPlayer = ({
       modifiedIframe = modifiedIframe.replace(/width="\d+"/g, 'width="100%"');
       modifiedIframe = modifiedIframe.replace(/height="\d+"/g, 'height="100%"');
       
+      // Add TV browser optimizations
+      const tvOptimizedStyle = isTVBrowser 
+        ? 'width: 100%; height: 100%; border: none; background: black; image-rendering: optimizeQuality; image-rendering: -webkit-optimize-contrast;'
+        : 'width: 100%; height: 100%; border: none; background: black;';
+      
       // Add style for full size and remove borders
       if (modifiedIframe.includes('style=')) {
         modifiedIframe = modifiedIframe.replace(
           /style="[^"]*"/g,
-          'style="width: 100%; height: 100%; border: none; background: black;"'
+          `style="${tvOptimizedStyle}"`
         );
       } else {
         modifiedIframe = modifiedIframe.replace(
           /(<iframe[^>]*?)>/g,
-          '$1 style="width: 100%; height: 100%; border: none; background: black;">'
+          `$1 style="${tvOptimizedStyle}">`
         );
       }
 
       // Remove frameborder
       modifiedIframe = modifiedIframe.replace(/frameborder="\d+"/g, '');
       
-      // Add allowfullscreen if not present
+      // Add allowfullscreen and TV-specific attributes
+      const additionalAttrs = isTVBrowser 
+        ? 'allowfullscreen loading="eager" importance="high"'
+        : 'allowfullscreen';
+        
       if (!modifiedIframe.includes('allowfullscreen')) {
         modifiedIframe = modifiedIframe.replace(
           /(<iframe[^>]*?)>/g,
-          '$1 allowfullscreen>'
+          `$1 ${additionalAttrs}>`
         );
       }
 
-      console.log('VideoPlayer: Final iframe:', modifiedIframe);
+      console.log('VideoPlayer: Final iframe (TV optimized):', modifiedIframe);
 
       return (
         <div className="w-full h-full relative bg-black">
@@ -206,8 +262,53 @@ export const VideoPlayer = ({
         <span className="text-2xl font-bold text-red-600">FILOFLIX</span>
       </div>
 
-      {/* Download Button */}
-      <div className="absolute top-20 right-6 z-30">
+      {/* Control Buttons */}
+      <div className="absolute top-20 right-6 z-30 flex gap-2">
+        {/* Connection Status */}
+        <div className="flex items-center bg-black/50 rounded px-2 py-1">
+          {connectionSpeed === 'slow' ? (
+            <WifiOff className="w-4 h-4 text-red-400" />
+          ) : (
+            <Wifi className="w-4 h-4 text-green-400" />
+          )}
+          <span className="text-xs text-white ml-1">
+            {connectionSpeed} {isTVBrowser && '(TV)'}
+          </span>
+        </div>
+
+        {/* Quality Settings */}
+        <div className="relative">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowQualityMenu(!showQualityMenu)}
+            className="text-white border-white hover:bg-white hover:text-black"
+          >
+            <Settings className="w-4 h-4 mr-2" />
+            {selectedQuality}
+          </Button>
+          
+          {showQualityMenu && (
+            <div className="absolute top-full right-0 mt-2 bg-black/90 border border-white/20 rounded p-2 min-w-32">
+              {['auto', 'high', 'medium', 'low'].map((quality) => (
+                <button
+                  key={quality}
+                  onClick={() => {
+                    setSelectedQuality(quality);
+                    setShowQualityMenu(false);
+                    console.log('VideoPlayer: Quality changed to:', quality);
+                  }}
+                  className={`block w-full text-left px-2 py-1 text-sm rounded hover:bg-white/10 ${
+                    selectedQuality === quality ? 'text-red-400' : 'text-white'
+                  }`}
+                >
+                  {quality.charAt(0).toUpperCase() + quality.slice(1)}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
         <Button
           variant="outline"
           size="sm"
