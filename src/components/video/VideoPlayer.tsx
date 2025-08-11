@@ -171,20 +171,23 @@ export const VideoPlayer = ({
       console.log('VideoPlayer: Processing iframe embed code');
       let modifiedIframe = videoSrc;
       
-      // Extract the Mega.nz URL and apply minimal optimizations for faster loading
+      // Extract the Mega.nz URL and optimize for immediate playback (no poster/thumbnail delay)
       const urlMatch = modifiedIframe.match(/src="([^"]*mega\.nz[^"]*)"/);
       if (urlMatch) {
         const originalUrl = urlMatch[1];
         let enhancedUrl = originalUrl;
         
-        // Only add essential optimizations to avoid delays
+        // Force immediate playback without showing poster/thumbnail
         const separator = enhancedUrl.includes('?') ? '&' : '?';
         const optimizations = [
-          'preload=metadata', // Essential for faster loading
-          'autoplay=1' // Start playing immediately
+          'autoplay=1', // Force autoplay
+          'preload=auto', // Preload everything for immediate start
+          'poster=0', // Disable poster/thumbnail display
+          'controls=1', // Ensure controls are available
+          'muted=0' // Ensure audio works
         ];
         
-        // Add connection-specific optimizations only if needed
+        // Add quality setting only if specified
         if (connectionSpeed === 'slow') {
           optimizations.push('quality=low');
         } else if (selectedQuality !== 'auto') {
@@ -194,7 +197,7 @@ export const VideoPlayer = ({
         enhancedUrl = `${enhancedUrl}${separator}${optimizations.join('&')}`;
         modifiedIframe = modifiedIframe.replace(originalUrl, enhancedUrl);
         
-        console.log('VideoPlayer: Optimized Mega.nz URL for faster loading:', enhancedUrl);
+        console.log('VideoPlayer: Optimized Mega.nz URL for immediate playback (no poster delay):', enhancedUrl);
       }
       
       // Remove restrictive sandbox attributes that might block video playback
