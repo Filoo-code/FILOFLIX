@@ -15,9 +15,11 @@ export const HeroSection = ({ content }: HeroSectionProps) => {
   const [isPlaying, setIsPlaying] = useState(false);
 
   useEffect(() => {
-    if (content.length > 0) {
-      const randomIndex = Math.floor(Math.random() * content.length);
-      setFeaturedContent(content[randomIndex]);
+    // Only show trailers in hero section
+    const trailers = content.filter(item => item.type === 'trailer');
+    if (trailers.length > 0) {
+      const randomIndex = Math.floor(Math.random() * trailers.length);
+      setFeaturedContent(trailers[randomIndex]);
     }
   }, [content]);
 
@@ -26,17 +28,15 @@ export const HeroSection = ({ content }: HeroSectionProps) => {
     return srcMatch ? srcMatch[1] : embedCode;
   };
 
-  const handlePlayVideo = () => {
-    console.log('=== HERO PLAY BUTTON CLICKED ===');
-    console.log('Featured content:', featuredContent?.title);
-    console.log('Video URL:', featuredContent?.video_url);
-    
-    if (!featuredContent?.video_url) {
-      console.error('No video URL found for featured content');
-      return;
-    }
-    
+  const handleUnmute = () => {
+    setIsMuted(false);
     setIsPlaying(true);
+  };
+
+  const handlePlayVideo = () => {
+    // For trailers, play inline instead of opening modal
+    setIsPlaying(true);
+    setIsMuted(false);
   };
 
   const handleCloseVideo = () => {
@@ -71,7 +71,15 @@ export const HeroSection = ({ content }: HeroSectionProps) => {
       <div className="relative h-screen">
         {/* Background Image/Video */}
         <div className="absolute inset-0">
-          {featuredContent?.thumbnail ? (
+          {isPlaying && featuredContent?.video_url ? (
+            <iframe
+              src={`${extractVideoSrc(featuredContent.video_url)}${featuredContent.video_url.includes('?') ? '&' : '?'}autoplay=1&muted=${isMuted ? 1 : 0}&controls=0&loop=1&playlist=${featuredContent.video_url.split('/').pop()}`}
+              className="w-full h-full"
+              allow="autoplay; encrypted-media"
+              allowFullScreen
+              style={{ border: 'none' }}
+            />
+          ) : featuredContent?.thumbnail ? (
             <img 
               src={featuredContent.thumbnail} 
               alt={featuredContent.title}
@@ -146,7 +154,7 @@ export const HeroSection = ({ content }: HeroSectionProps) => {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setIsMuted(!isMuted)}
+            onClick={isMuted ? handleUnmute : () => setIsMuted(true)}
             className="border-gray-500 text-white hover:bg-white/10 rounded-full w-10 h-10 p-0"
           >
             {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
@@ -154,14 +162,7 @@ export const HeroSection = ({ content }: HeroSectionProps) => {
         </div>
       </div>
 
-      <VideoPlayer
-        isOpen={isPlaying}
-        videoSrc={featuredContent ? extractVideoSrc(featuredContent.video_url) : ''}
-        title={featuredContent?.title}
-        subtitle={featuredContent?.subtitle || undefined}
-        onClose={handleCloseVideo}
-        onDownload={handleDownload}
-      />
+      {/* VideoPlayer modal removed for trailers - they play inline */}
     </>
   );
 };
