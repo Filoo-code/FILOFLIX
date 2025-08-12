@@ -1,9 +1,11 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Play, Info, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { VideoPlayer } from "@/components/video/VideoPlayer";
 import { ContentItem } from "@/types/content";
+import videojs from 'video.js';
+import 'video.js/dist/video-js.css';
 
 interface HeroSectionProps {
   content: ContentItem[];
@@ -13,6 +15,8 @@ export const HeroSection = ({ content }: HeroSectionProps) => {
   const [featuredContent, setFeaturedContent] = useState<ContentItem | null>(null);
   const [isMuted, setIsMuted] = useState(true);
   const [isPlaying, setIsPlaying] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const playerRef = useRef<any>(null);
 
   useEffect(() => {
     // Only show trailers in hero section
@@ -23,34 +27,94 @@ export const HeroSection = ({ content }: HeroSectionProps) => {
     }
   }, [content]);
 
-  const extractVideoSrc = (embedCode: string): string => {
+  const extractDirectVideoUrl = async (embedCode: string): Promise<string> => {
     const srcMatch = embedCode.match(/src=["']([^"']+)["']/);
-    return srcMatch ? srcMatch[1] : embedCode;
+    const url = srcMatch ? srcMatch[1] : embedCode;
+    
+    // For Mega.nz links, try to extract direct video URL
+    if (url.includes('mega.nz')) {
+      try {
+        // Extract file ID from Mega.nz URL
+        const fileIdMatch = url.match(/file\/([a-zA-Z0-9_-]+)/);
+        if (fileIdMatch) {
+          const fileId = fileIdMatch[1];
+          // Convert to direct download URL format
+          return `https://mega.nz/embed/${fileId}`;
+        }
+      } catch (error) {
+        console.error('Error processing Mega.nz URL:', error);
+      }
+    }
+    
+    return url;
   };
 
-  const renderVideoEmbed = (embedCode: string) => {
-    const videoSrc = extractVideoSrc(embedCode);
-    
-    // Add autoplay parameters for Mega.nz
-    const autoplayUrl = videoSrc.includes('mega.nz') 
-      ? `${videoSrc}&autoplay=1&muted=1` 
-      : videoSrc;
-    
+  // Initialize Video.js player
+  useEffect(() => {
+    if (isPlaying && videoRef.current && featuredContent?.video_url) {
+      const initializePlayer = async () => {
+        const videoUrl = await extractDirectVideoUrl(featuredContent.video_url);
+        
+        if (playerRef.current) {
+          playerRef.current.dispose();
+        }
+
+        const player = videojs(videoRef.current, {
+          controls: true,
+          autoplay: true,
+          muted: isMuted,
+          preload: 'auto',
+          fluid: true,
+          responsive: true,
+          sources: [{
+            src: videoUrl,
+            type: 'video/mp4'
+          }]
+        });
+
+        playerRef.current = player;
+
+        player.ready(() => {
+          player.volume(isMuted ? 0 : 1);
+        });
+      };
+
+      initializePlayer();
+    }
+
+    return () => {
+      if (playerRef.current) {
+        playerRef.current.dispose();
+        playerRef.current = null;
+      }
+    };
+  }, [isPlaying, featuredContent?.video_url, isMuted]);
+
+  const renderVideoPlayer = () => {
     return (
-      <iframe
-        src={autoplayUrl}
-        className="w-full h-full"
-        allow="autoplay; encrypted-media; fullscreen; accelerometer; gyroscope; picture-in-picture"
-        allowFullScreen
-        style={{ border: 'none' }}
-        loading="eager"
-      />
+      <div className="w-full h-full">
+        <video
+          ref={videoRef}
+          className="video-js vjs-default-skin w-full h-full"
+          data-setup="{}"
+        />
+      </div>
     );
   };
 
   const handleUnmute = () => {
     setIsMuted(false);
+    if (playerRef.current) {
+      playerRef.current.volume(1);
+    }
     setIsPlaying(true);
+  };
+
+  const handleMute = () => {
+    setIsMuted(true);
+    if (playerRef.current) {
+      playerRef.current.volume(0);
+    }
   };
 
   const handlePlayVideo = () => {
@@ -93,7 +157,7 @@ export const HeroSection = ({ content }: HeroSectionProps) => {
         {/* Background Image/Video */}
         <div className="absolute inset-0">
           {isPlaying && featuredContent?.video_url ? (
-            renderVideoEmbed(featuredContent.video_url)
+            renderVideoPlayer()
           ) : featuredContent?.thumbnail ? (
             <img 
               src={featuredContent.thumbnail} 
@@ -169,7 +233,7 @@ export const HeroSection = ({ content }: HeroSectionProps) => {
           <Button
             variant="outline"
             size="sm"
-            onClick={isMuted ? handleUnmute : () => setIsMuted(true)}
+            onClick={isMuted ? handleUnmute : handleMute}
             className="border-gray-500 text-white hover:bg-white/10 rounded-full w-10 h-10 p-0"
           >
             {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
