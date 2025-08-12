@@ -30,17 +30,28 @@ export const HeroSection = ({ content }: HeroSectionProps) => {
 
   const extractDirectVideoUrl = async (embedCode: string): Promise<string> => {
     const srcMatch = embedCode.match(/src=["']([^"']+)["']/);
-    const url = srcMatch ? srcMatch[1] : embedCode;
+    let url = srcMatch ? srcMatch[1] : embedCode;
     
-    // For Mega.nz links, try to extract direct video URL
+    // For Mega.nz links, extract direct download URL for Video.js streaming
     if (url.includes('mega.nz')) {
       try {
-        // Extract file ID from Mega.nz URL
-        const fileIdMatch = url.match(/file\/([a-zA-Z0-9_-]+)/);
-        if (fileIdMatch) {
-          const fileId = fileIdMatch[1];
-          // Convert to direct download URL format
-          return `https://mega.nz/embed/${fileId}`;
+        // Extract file ID and key from Mega.nz URL
+        const fileMatch = url.match(/mega\.nz\/(?:file\/|#!)([a-zA-Z0-9_-]+)(?:[!#]([a-zA-Z0-9_-]+))?/);
+        if (fileMatch) {
+          const fileId = fileMatch[1];
+          const key = fileMatch[2];
+          
+          // Use Mega.nz API to get direct download URL
+          if (key) {
+            // Format: https://mega.nz/file/[fileId]#[key]
+            url = `https://mega.nz/file/${fileId}#${key}`;
+          } else {
+            // Try to extract key from full URL if not captured
+            const keyMatch = url.match(/[!#]([a-zA-Z0-9_-]+)$/);
+            if (keyMatch) {
+              url = `https://mega.nz/file/${fileId}#${keyMatch[1]}`;
+            }
+          }
         }
       } catch (error) {
         console.error('Error processing Mega.nz URL:', error);
