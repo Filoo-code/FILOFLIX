@@ -23,20 +23,27 @@ export const HeroSection = ({ content }: HeroSectionProps) => {
     }
   }, [content]);
 
+  const extractVideoSrc = (embedCode: string): string => {
+    const srcMatch = embedCode.match(/src=["']([^"']+)["']/);
+    return srcMatch ? srcMatch[1] : embedCode;
+  };
+
   const renderVideoEmbed = (embedCode: string) => {
-    // If it's already an iframe, use it directly
-    if (embedCode.includes('<iframe')) {
-      return <div dangerouslySetInnerHTML={{ __html: embedCode }} className="w-full h-full" />;
-    }
+    const videoSrc = extractVideoSrc(embedCode);
     
-    // Otherwise, create iframe with the URL
+    // Add autoplay parameters for Mega.nz
+    const autoplayUrl = videoSrc.includes('mega.nz') 
+      ? `${videoSrc}&autoplay=1&muted=1` 
+      : videoSrc;
+    
     return (
       <iframe
-        src={embedCode}
+        src={autoplayUrl}
         className="w-full h-full"
-        allow="autoplay; encrypted-media; fullscreen"
+        allow="autoplay; encrypted-media; fullscreen; accelerometer; gyroscope; picture-in-picture"
         allowFullScreen
         style={{ border: 'none' }}
+        loading="eager"
       />
     );
   };
