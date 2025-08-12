@@ -4,8 +4,9 @@ import { Play, Info, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { VideoPlayer } from "@/components/video/VideoPlayer";
 import { ContentItem } from "@/types/content";
-import videojs from 'video.js';
-import 'video.js/dist/video-js.css';
+
+// Declare global videojs from CDN
+declare const videojs: any;
 
 interface HeroSectionProps {
   content: ContentItem[];
