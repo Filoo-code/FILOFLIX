@@ -28,78 +28,48 @@ export const HeroSection = ({ content }: HeroSectionProps) => {
     }
   }, [content]);
 
-  const extractDirectVideoUrl = async (embedCode: string): Promise<string> => {
+  const getStreamingUrl = (embedCode: string): string => {
+    // Extract URL from embed code
     const srcMatch = embedCode.match(/src=["']([^"']+)["']/);
     let url = srcMatch ? srcMatch[1] : embedCode;
     
-    // For Mega.nz links, extract direct download URL for Video.js streaming
+    // If it's a Mega.nz URL, we can't stream directly - return empty for now
+    // In production, you'd want to have separate streaming URLs stored
     if (url.includes('mega.nz')) {
-      try {
-        // Extract file ID and key from Mega.nz URL
-        const fileMatch = url.match(/mega\.nz\/(?:file\/|#!)([a-zA-Z0-9_-]+)(?:[!#]([a-zA-Z0-9_-]+))?/);
-        if (fileMatch) {
-          const fileId = fileMatch[1];
-          const key = fileMatch[2];
-          
-          // Use Mega.nz API to get direct download URL
-          if (key) {
-            // Format: https://mega.nz/file/[fileId]#[key]
-            url = `https://mega.nz/file/${fileId}#${key}`;
-          } else {
-            // Try to extract key from full URL if not captured
-            const keyMatch = url.match(/[!#]([a-zA-Z0-9_-]+)$/);
-            if (keyMatch) {
-              url = `https://mega.nz/file/${fileId}#${keyMatch[1]}`;
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Error processing Mega.nz URL:', error);
-      }
+      console.log('Mega.nz detected - used for storage only, no streaming available');
+      return '';
     }
     
+    // Return direct video URLs for streaming (mp4, webm, etc.)
     return url;
   };
 
-  // Initialize Video.js player
+  // Initialize standard HTML5 video player
   useEffect(() => {
     if (isPlaying && videoRef.current && featuredContent?.video_url) {
-      const initializePlayer = async () => {
-        const videoUrl = await extractDirectVideoUrl(featuredContent.video_url);
-        
-        if (playerRef.current) {
-          playerRef.current.dispose();
-        }
-
-        const player = videojs(videoRef.current, {
-          controls: true,
-          autoplay: true,
-          muted: isMuted,
-          preload: 'auto',
-          fluid: true,
-          responsive: true,
-          sources: [{
-            src: videoUrl,
-            type: 'video/mp4'
-          }]
-        });
-
-        playerRef.current = player;
-
-        player.ready(() => {
-          player.volume(isMuted ? 0 : 1);
-        });
-      };
-
-      initializePlayer();
-    }
-
-    return () => {
-      if (playerRef.current) {
-        playerRef.current.dispose();
-        playerRef.current = null;
+      const streamingUrl = getStreamingUrl(featuredContent.video_url);
+      
+      if (!streamingUrl) {
+        console.log('No streaming URL available - Mega.nz is storage only');
+        setIsPlaying(false);
+        return;
       }
-    };
+
+      // Use HTML5 video directly instead of Video.js for now
+      const video = videoRef.current;
+      video.src = streamingUrl;
+      video.muted = isMuted;
+      video.autoplay = true;
+      video.load();
+      
+      video.addEventListener('loadeddata', () => {
+        if (video.readyState >= 2) {
+          video.play().catch(error => {
+            console.error('Video play failed:', error);
+          });
+        }
+      });
+    }
   }, [isPlaying, featuredContent?.video_url, isMuted]);
 
   const renderVideoPlayer = () => {
@@ -107,8 +77,10 @@ export const HeroSection = ({ content }: HeroSectionProps) => {
       <div className="w-full h-full">
         <video
           ref={videoRef}
-          className="video-js vjs-default-skin w-full h-full"
-          data-setup="{}"
+          className="w-full h-full object-cover"
+          controls
+          muted={isMuted}
+          autoPlay
         />
       </div>
     );
@@ -116,16 +88,18 @@ export const HeroSection = ({ content }: HeroSectionProps) => {
 
   const handleUnmute = () => {
     setIsMuted(false);
-    if (playerRef.current) {
-      playerRef.current.volume(1);
+    if (videoRef.current) {
+      videoRef.current.muted = false;
+      videoRef.current.volume = 1;
     }
     setIsPlaying(true);
   };
 
   const handleMute = () => {
     setIsMuted(true);
-    if (playerRef.current) {
-      playerRef.current.volume(0);
+    if (videoRef.current) {
+      videoRef.current.muted = true;
+      videoRef.current.volume = 0;
     }
   };
 
