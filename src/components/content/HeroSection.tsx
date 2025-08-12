@@ -23,9 +23,22 @@ export const HeroSection = ({ content }: HeroSectionProps) => {
     }
   }, [content]);
 
-  const extractVideoSrc = (embedCode: string): string => {
-    const srcMatch = embedCode.match(/src=["']([^"']+)["']/);
-    return srcMatch ? srcMatch[1] : embedCode;
+  const renderVideoEmbed = (embedCode: string) => {
+    // If it's already an iframe, use it directly
+    if (embedCode.includes('<iframe')) {
+      return <div dangerouslySetInnerHTML={{ __html: embedCode }} className="w-full h-full" />;
+    }
+    
+    // Otherwise, create iframe with the URL
+    return (
+      <iframe
+        src={embedCode}
+        className="w-full h-full"
+        allow="autoplay; encrypted-media; fullscreen"
+        allowFullScreen
+        style={{ border: 'none' }}
+      />
+    );
   };
 
   const handleUnmute = () => {
@@ -46,7 +59,7 @@ export const HeroSection = ({ content }: HeroSectionProps) => {
 
   const handleDownload = () => {
     if (featuredContent) {
-      const downloadUrl = featuredContent.download_url || extractVideoSrc(featuredContent.video_url);
+      const downloadUrl = featuredContent.download_url || featuredContent.video_url;
       window.open(downloadUrl, '_blank');
     }
   };
@@ -73,13 +86,7 @@ export const HeroSection = ({ content }: HeroSectionProps) => {
         {/* Background Image/Video */}
         <div className="absolute inset-0">
           {isPlaying && featuredContent?.video_url ? (
-            <iframe
-              src={extractVideoSrc(featuredContent.video_url)}
-              className="w-full h-full"
-              allow="autoplay; encrypted-media; fullscreen"
-              allowFullScreen
-              style={{ border: 'none' }}
-            />
+            renderVideoEmbed(featuredContent.video_url)
           ) : featuredContent?.thumbnail ? (
             <img 
               src={featuredContent.thumbnail} 
