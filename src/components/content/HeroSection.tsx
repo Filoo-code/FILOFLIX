@@ -33,7 +33,13 @@ export const HeroSection = ({ content }: HeroSectionProps) => {
     const srcMatch = embedCode.match(/src=["']([^"']+)["']/);
     let url = srcMatch ? srcMatch[1] : embedCode;
     
-    // Return the URL for HTML5 video (including Mega.nz URLs)
+    // Block Mega.nz URLs since HTML5 video cannot play embed URLs
+    if (url.includes('mega.nz')) {
+      console.log('Mega.nz detected - HTML5 video cannot play embed URLs');
+      return '';
+    }
+    
+    // Only allow direct video file URLs (mp4, webm, etc.)
     return url;
   };
 
