@@ -132,6 +132,22 @@ export const VideoPlayer = ({
 
   if (!isOpen) return null;
 
+  const getStreamingUrl = (videoSrc: string): string => {
+    // Extract URL from embed code
+    const srcMatch = videoSrc.match(/src=["']([^"']+)["']/);
+    let url = srcMatch ? srcMatch[1] : videoSrc;
+    
+    // If it's a Mega.nz URL, we can't stream directly - return empty for now
+    // In production, you'd want to have separate streaming URLs stored
+    if (url.includes('mega.nz')) {
+      console.log('Mega.nz detected - used for storage only, no streaming available');
+      return '';
+    }
+    
+    // Return direct video URLs for streaming (mp4, webm, etc.)
+    return url;
+  };
+
   const renderVideoContent = () => {
     if (!videoSrc) {
       console.log('VideoPlayer: No video source provided');
@@ -147,19 +163,15 @@ export const VideoPlayer = ({
       );
     }
 
-    console.log('VideoPlayer: Processing video source:', videoSrc);
-
-    // Check if videoSrc is a direct link to external websites that should be blocked
-    const blockedDomains = ['pornhub.com', 'xvideos.com', 'xnxx.com', 'redtube.com'];
-    const isBlockedDomain = blockedDomains.some(domain => videoSrc.includes(domain));
+    const streamingUrl = getStreamingUrl(videoSrc);
     
-    if (isBlockedDomain) {
-      console.log('VideoPlayer: Blocked external domain detected');
+    if (!streamingUrl) {
+      console.log('No streaming URL available - Mega.nz is storage only');
       return (
         <div className="w-full h-full flex items-center justify-center text-white">
           <div className="text-center">
-            <p className="text-xl mb-4">This video cannot be played</p>
-            <p className="text-sm text-gray-400 mb-4">External links are not supported</p>
+            <p className="text-xl mb-4">Streaming not available</p>
+            <p className="text-sm text-gray-400 mb-4">Mega.nz is used for storage only</p>
             <Button onClick={onClose} variant="outline" className="text-white border-white">
               Close
             </Button>
@@ -168,169 +180,6 @@ export const VideoPlayer = ({
       );
     }
 
-    // If videoSrc contains iframe HTML, render it directly
-    if (videoSrc.includes('<iframe')) {
-      console.log('VideoPlayer: Processing iframe embed code');
-      let modifiedIframe = videoSrc;
-      
-      // Extract the Mega.nz URL and optimize for immediate playback (no poster/thumbnail delay)
-      const urlMatch = modifiedIframe.match(/src="([^"]*mega\.nz[^"]*)"/);
-      if (urlMatch) {
-        const originalUrl = urlMatch[1];
-        let enhancedUrl = originalUrl;
-        
-        // Ultra-fast optimization for instant playback
-        const separator = enhancedUrl.includes('?') ? '&' : '?';
-        const optimizations = [
-          'autoplay=1',
-          'muted=1', // Auto-mute for instant autoplay
-          'preload=metadata', // Load just metadata for faster start
-          'poster=0',
-          'controls=1',
-          'playsinline=1',
-          'webkit-playsinline=1',
-          'start=0',
-          'buffer=fast' // Request faster buffering
-        ];
-        
-        // Adaptive quality for performance
-        if (isTVBrowser) {
-          optimizations.push('quality=high', 'bandwidth=fast');
-        } else if (connectionSpeed === 'slow') {
-          optimizations.push('quality=low', 'bandwidth=slow');
-        } else {
-          optimizations.push('quality=medium', 'bandwidth=auto');
-        }
-        
-        enhancedUrl = `${enhancedUrl}${separator}${optimizations.join('&')}`;
-        modifiedIframe = modifiedIframe.replace(originalUrl, enhancedUrl);
-        
-        console.log('VideoPlayer: Optimized Mega.nz URL for immediate playback (no poster delay):', enhancedUrl);
-      }
-      
-      // Remove restrictive sandbox attributes that might block video playback
-      modifiedIframe = modifiedIframe.replace(/sandbox="[^"]*"/g, '');
-      
-      // Ensure width and height are 100%
-      modifiedIframe = modifiedIframe.replace(/width="\d+"/g, 'width="100%"');
-      modifiedIframe = modifiedIframe.replace(/height="\d+"/g, 'height="100%"');
-      
-      // Performance-optimized styles for mobile/TV
-      const optimizedStyle = isTVBrowser 
-        ? 'width: 100%; height: 100%; border: none; background: black; image-rendering: optimizeQuality; transform: translateZ(0); will-change: transform; backface-visibility: hidden;'
-        : 'width: 100%; height: 100%; border: none; background: black; transform: translateZ(0); will-change: transform; -webkit-transform: translateZ(0); -webkit-backface-visibility: hidden;';
-      
-      // Apply performance-optimized styles
-      if (modifiedIframe.includes('style=')) {
-        modifiedIframe = modifiedIframe.replace(
-          /style="[^"]*"/g,
-          `style="${optimizedStyle}"`
-        );
-      } else {
-        modifiedIframe = modifiedIframe.replace(
-          /(<iframe[^>]*?)>/g,
-          `$1 style="${optimizedStyle}">`
-        );
-      }
-
-      // Remove frameborder
-      modifiedIframe = modifiedIframe.replace(/frameborder="\d+"/g, '');
-      
-      // High-performance iframe attributes for mobile/TV
-      const performanceAttrs = [
-        'allowfullscreen',
-        'loading="eager"',
-        'importance="high"',
-        'fetchpriority="high"',
-        'referrerpolicy="strict-origin-when-cross-origin"',
-        'allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen; cross-origin-isolated; web-share"',
-        'sandbox="allow-scripts allow-same-origin allow-presentation allow-forms"'
-      ];
-      
-      if (isTVBrowser) {
-        performanceAttrs.push('data-tv-optimized="true"', 'data-high-performance="true"');
-      } else {
-        performanceAttrs.push('data-mobile-optimized="true"', 'playsinline');
-      }
-      
-      const attrsString = performanceAttrs.join(' ');
-      
-      if (!modifiedIframe.includes('allowfullscreen')) {
-        modifiedIframe = modifiedIframe.replace(
-          /(<iframe[^>]*?)>/g,
-          `$1 ${attrsString}>`
-        );
-      }
-
-      console.log('VideoPlayer: Final optimized iframe:', modifiedIframe);
-
-      return (
-        <div className="w-full h-full relative bg-black">
-          {/* Loading indicator */}
-          {isLoading && (
-            <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-10">
-              <div className="text-center text-white">
-                <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-white mb-4 mx-auto"></div>
-                <p className="text-lg">Connecting to Mega.nz...</p>
-                <p className="text-sm text-gray-400">Optimizing for {isTVBrowser ? 'TV' : connectionSpeed} connection</p>
-              </div>
-            </div>
-          )}
-
-          {/* Error overlay with enhanced retry */}
-          {hasError && (
-            <div className="absolute inset-0 bg-black flex items-center justify-center z-20">
-              <div className="text-center text-white">
-               <p className="text-xl mb-4">Connection failed</p>
-               <p className="text-sm text-gray-400 mb-4">
-                 {retryCount > 0 ? `Retry attempt ${retryCount}/3` : 'Optimizing connection to Mega.nz...'}
-               </p>
-                <Button 
-                  onClick={() => {
-                    setHasError(false);
-                    setIsLoading(true);
-                    setRetryCount(prev => prev + 1);
-                    
-                    // Enhanced retry with exponential backoff
-                    const retryDelay = Math.min(1000 * Math.pow(2, retryCount), 5000);
-                    setTimeout(() => {
-                      const iframe = document.querySelector('#video-iframe') as HTMLIFrameElement;
-                      if (iframe) {
-                        // Refresh the iframe with cache busting
-                        const timestamp = Date.now();
-                        const originalSrc = iframe.src;
-                        const cacheBuster = originalSrc.includes('?') ? `&_t=${timestamp}` : `?_t=${timestamp}`;
-                        iframe.src = originalSrc + cacheBuster;
-                        console.log('VideoPlayer: Retrying connection with cache bust:', iframe.src);
-                      }
-                      setIsLoading(false);
-                    }, retryDelay);
-                  }} 
-                  variant="outline" 
-                  className="text-white border-white mr-2"
-                  disabled={retryCount >= 3}
-                >
-                  {retryCount >= 3 ? 'Max retries reached' : 'Retry'}
-                </Button>
-                <Button onClick={onClose} variant="outline" className="text-white border-white">
-                  Close
-                </Button>
-              </div>
-            </div>
-          )}
-          
-          <div 
-            className="w-full h-full"
-            dangerouslySetInnerHTML={{ 
-              __html: modifiedIframe.replace('<iframe', `<iframe id="video-iframe" onload="console.log('Mega.nz iframe loaded successfully'); document.dispatchEvent(new CustomEvent('iframe-loaded'));" onerror="console.error('Mega.nz iframe failed to load'); document.dispatchEvent(new CustomEvent('iframe-error'));"`)
-            }}
-          />
-        </div>
-      );
-    }
-
-    // Otherwise, render as iframe with src
-    console.log('VideoPlayer: Processing direct URL:', videoSrc);
     return (
       <div className="w-full h-full relative bg-black">
         {/* Error overlay */}
@@ -338,7 +187,7 @@ export const VideoPlayer = ({
           <div className="absolute inset-0 bg-black flex items-center justify-center z-20">
             <div className="text-center text-white">
                <p className="text-xl mb-4">Video failed to load</p>
-               <p className="text-sm text-gray-400 mb-4">This may be due to the video being played on another device</p>
+               <p className="text-sm text-gray-400 mb-4">Check your internet connection</p>
               <Button 
                 onClick={() => {
                   setHasError(false);
@@ -355,23 +204,25 @@ export const VideoPlayer = ({
           </div>
         )}
 
-        <iframe
-          id="video-iframe"
-          src={videoSrc}
-          className="w-full h-full"
-          frameBorder="0"
-          allowFullScreen
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-          style={{ border: 'none', background: 'black' }}
-          onLoad={() => {
-            console.log('VideoPlayer: Direct iframe loaded successfully');
-            setHasError(false);
-          }}
-          onError={(e) => {
-            console.error('VideoPlayer: Direct iframe failed to load (possibly due to multi-device access):', e);
+        <video
+          className="w-full h-full object-cover"
+          controls
+          autoPlay
+          muted
+          onError={() => {
+            console.error('HTML5 video failed to load');
             setHasError(true);
           }}
-        />
+          onLoadedData={() => {
+            console.log('HTML5 video loaded successfully');
+            setHasError(false);
+          }}
+        >
+          <source src={streamingUrl} type="video/mp4" />
+          <source src={streamingUrl} type="video/webm" />
+          <source src={streamingUrl} type="video/ogg" />
+          Your browser does not support the video tag.
+        </video>
       </div>
     );
   };

@@ -36,56 +36,26 @@ export const ContentRow = ({ title, items }: ContentRowProps) => {
     }
   };
 
-  const extractVideoSrc = (embedCode: string | undefined | null): string => {
+  const getStreamingUrl = (embedCode: string | undefined | null): string => {
     if (!embedCode) {
-      console.log('No embed code provided to extractVideoSrc');
+      console.log('No embed code provided');
       return '';
     }
     
-    console.log('Processing embed code:', embedCode);
+    console.log('Processing embed code for streaming:', embedCode);
     
-    // If it's an iframe, return the full iframe HTML for embedding
-    if (embedCode.includes('<iframe')) {
-      console.log('Found iframe embed code, returning as-is for iframe rendering');
-      return embedCode;
-    }
-    
-    // If it's a direct URL that should be embedded, wrap it in iframe
-    if (embedCode.startsWith('http')) {
-      console.log('Found direct URL, wrapping in iframe');
-      // Check if it's a known embeddable service
-      if (embedCode.includes('youtube.com') || embedCode.includes('youtu.be')) {
-        // Convert YouTube URLs to embed format
-        const videoId = embedCode.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/)?.[1];
-        if (videoId) {
-          return `<iframe width="100%" height="100%" src="https://www.youtube.com/embed/${videoId}" frameborder="0" allowfullscreen></iframe>`;
-        }
-      }
-      
-      if (embedCode.includes('mega.nz/embed') || embedCode.includes('mega.nz/file')) {
-        // For Mega.nz, convert file links to embed links
-        if (embedCode.includes('mega.nz/file')) {
-          const embedUrl = embedCode.replace('mega.nz/file', 'mega.nz/embed');
-          return `<iframe width="100%" height="100%" src="${embedUrl}" frameborder="0" allowfullscreen></iframe>`;
-        }
-        // If already embed URL, wrap in iframe
-        return `<iframe width="100%" height="100%" src="${embedCode}" frameborder="0" allowfullscreen></iframe>`;
-      }
-      
-      // For other URLs, attempt to embed directly
-      return `<iframe width="100%" height="100%" src="${embedCode}" frameborder="0" allowfullscreen></iframe>`;
-    }
-    
-    // Try to extract src from existing iframe
+    // Extract URL from embed code
     const srcMatch = embedCode.match(/src=["']([^"']+)["']/);
-    if (srcMatch) {
-      console.log('Extracted src from iframe:', srcMatch[1]);
-      // Return the full iframe with extracted src
-      return embedCode;
+    let url = srcMatch ? srcMatch[1] : embedCode;
+    
+    // If it's a Mega.nz URL, we can't stream directly - return empty
+    if (url.includes('mega.nz')) {
+      console.log('Mega.nz detected - used for storage only, no streaming available');
+      return '';
     }
     
-    console.log('Returning embed code as-is');
-    return embedCode;
+    // Return direct video URLs for streaming (mp4, webm, etc.)
+    return url;
   };
 
   const scroll = (direction: 'left' | 'right') => {
@@ -157,17 +127,17 @@ export const ContentRow = ({ title, items }: ContentRowProps) => {
 
     if (item.type === 'series' && selectedEpisode) {
       console.log('Getting embed code for selected episode:', selectedEpisode);
-      return extractVideoSrc(selectedEpisode.embed_code);
+      return getStreamingUrl(selectedEpisode.embed_code);
     }
     
     const episodes = parseEpisodes(item.video_url);
     if (episodes.length > 0) {
       console.log('Getting first episode embed code from series');
-      return extractVideoSrc(episodes[0].embed_code);
+      return getStreamingUrl(episodes[0].embed_code);
     }
     
     console.log('Getting direct embed code for movie/trailer');
-    return extractVideoSrc(item.video_url);
+    return getStreamingUrl(item.video_url);
   };
 
   const handleDownload = () => {
