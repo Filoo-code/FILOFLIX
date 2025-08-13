@@ -33,14 +33,7 @@ export const HeroSection = ({ content }: HeroSectionProps) => {
     const srcMatch = embedCode.match(/src=["']([^"']+)["']/);
     let url = srcMatch ? srcMatch[1] : embedCode;
     
-    // If it's a Mega.nz URL, we can't stream directly - return empty for now
-    // In production, you'd want to have separate streaming URLs stored
-    if (url.includes('mega.nz')) {
-      console.log('Mega.nz detected - used for storage only, no streaming available');
-      return '';
-    }
-    
-    // Return direct video URLs for streaming (mp4, webm, etc.)
+    // Return the URL for HTML5 video (including Mega.nz URLs)
     return url;
   };
 
