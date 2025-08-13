@@ -29,17 +29,17 @@ export const HeroSection = ({ content }: HeroSectionProps) => {
   }, [content]);
 
   const getStreamingUrl = (embedCode: string): string => {
-    // Extract URL from embed code
+    // For Mega.nz, return the full embed code for iframe rendering
+    if (embedCode.includes('mega.nz')) {
+      console.log('Mega.nz detected - will use iframe embed');
+      return embedCode;
+    }
+    
+    // Extract URL from embed code for other sources
     const srcMatch = embedCode.match(/src=["']([^"']+)["']/);
     let url = srcMatch ? srcMatch[1] : embedCode;
     
-    // Block Mega.nz URLs since HTML5 video cannot play embed URLs
-    if (url.includes('mega.nz')) {
-      console.log('Mega.nz detected - HTML5 video cannot play embed URLs');
-      return '';
-    }
-    
-    // Only allow direct video file URLs (mp4, webm, etc.)
+    // Return direct video file URLs for HTML5 video
     return url;
   };
 

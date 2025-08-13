@@ -162,15 +162,70 @@ export const VideoPlayer = ({
       );
     }
 
+    // Check if it's a Mega.nz embed - render iframe instead of HTML5 video
+    if (videoSrc.includes('mega.nz') || videoSrc.includes('<iframe')) {
+      console.log('Rendering Mega.nz embed iframe');
+      return (
+        <div className="w-full h-full relative bg-black">
+          {isLoading && (
+            <div className="absolute inset-0 bg-black flex items-center justify-center z-20">
+              <div className="text-center text-white">
+                <p className="text-xl mb-4">Loading video...</p>
+              </div>
+            </div>
+          )}
+          
+          {hasError && (
+            <div className="absolute inset-0 bg-black flex items-center justify-center z-20">
+              <div className="text-center text-white">
+                <p className="text-xl mb-4">Video failed to load</p>
+                <p className="text-sm text-gray-400 mb-4">Check your internet connection</p>
+                <Button 
+                  onClick={() => {
+                    setHasError(false);
+                    setIsLoading(true);
+                  }} 
+                  variant="outline" 
+                  className="text-white border-white mr-2"
+                >
+                  Retry
+                </Button>
+                <Button onClick={onClose} variant="outline" className="text-white border-white">
+                  Close
+                </Button>
+              </div>
+            </div>
+          )}
+          
+          <div 
+            className="w-full h-full"
+            dangerouslySetInnerHTML={{ 
+              __html: videoSrc.includes('<iframe') 
+                ? videoSrc.replace(/width="\d+"/, 'width="100%"').replace(/height="\d+"/, 'height="100%"').replace(/frameborder="0"/, 'frameborder="0" style="width:100%;height:100%;"')
+                : `<iframe src="${videoSrc}" width="100%" height="100%" frameborder="0" allowfullscreen style="width:100%;height:100%;"></iframe>`
+            }}
+            onLoad={() => {
+              setIsLoading(false);
+              setHasError(false);
+            }}
+            onError={() => {
+              setIsLoading(false);
+              setHasError(true);
+            }}
+          />
+        </div>
+      );
+    }
+
     const streamingUrl = getStreamingUrl(videoSrc);
     
     if (!streamingUrl) {
-      console.log('No streaming URL available - Mega.nz is storage only');
+      console.log('No streaming URL available for HTML5 video');
       return (
         <div className="w-full h-full flex items-center justify-center text-white">
           <div className="text-center">
-            <p className="text-xl mb-4">Streaming not available</p>
-            <p className="text-sm text-gray-400 mb-4">Mega.nz is used for storage only</p>
+            <p className="text-xl mb-4">Video format not supported</p>
+            <p className="text-sm text-gray-400 mb-4">Please use a direct video file URL</p>
             <Button onClick={onClose} variant="outline" className="text-white border-white">
               Close
             </Button>
